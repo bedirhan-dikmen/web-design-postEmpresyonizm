@@ -1,0 +1,43 @@
+# dependencies / build output
+node_modules
+.next
+out
+build
+next-env.d.ts
+*.tsbuildinfo
+
+# environment files (secrets and deployment values stay on the server) — the template is tracked
+.env
+.env.*
+!.env.example
+
+# credentials that must never enter the repository
+*.pem
+*.key
+*.crt
+*.p12
+cloudflared/
+.cloudflared/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# local verification, scratch and captures
+.verify/
+scratchpad/
+coverage/
+.vercel/
+*.tmp
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# regenerable painting masters (deterministic: npm run art)
+art-src/masters/

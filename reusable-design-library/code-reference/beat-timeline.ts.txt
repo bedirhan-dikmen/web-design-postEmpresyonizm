@@ -1,0 +1,197 @@
+/**
+ * REFERENCE COPY — not imported by anything. Rename to .ts to use in a new project.
+ * Production source: lib/prototype/chapter4/timeline.ts, lib/prototype/chapter5/timeline.ts
+ *
+ * BEAT MAPS AND CAMERA PATHS
+ *
+ * An act is declared as a map of beat durations, accumulated into absolute times. Every tween is
+ * positioned as a FRACTION of its beat, so re-timing a beat stays local instead of rippling through
+ * the file.
+ *
+ *   1 timeline unit = 100vh of scroll. Fix this and never vary it.
+ *
+ * See: shared/TIMELINE_AND_SCROLL_SKILL.md, shared/CAMERA_GRAMMAR.md
+ */
+
+// ─────────────────────────────────────────────────────────────── beat map
+
+export interface Beat {
+  start: number;
+  dur: number;
+}
+
+/**
+ * Accumulate a duration map into a beat map.
+ *
+ * Naming travel beats separately (t1, t2 …) keeps their cost visible — a travel is usually the most
+ * expensive item in an act and the first thing to question when pacing is wrong.
+ */
+export function accumulate<K extends string>(
+  durations: Record<K, number>,
+  start: number,
+): Record<K, Beat> {
+  let t = start;
+  const out = {} as Record<K, Beat>;
+  for (const k of Object.keys(durations) as K[]) {
+    out[k] = { start: t, dur: durations[k] };
+    t += durations[k];
+  }
+  return out;
+}
+
+/**
+ * Example:
+ *
+ *   const DURATIONS = { a1: 1.0, a2: 1.2, t1: 2.2, b1: 1.2, b2: 1.0 } as const;
+ *   const BEATS = accumulate(DURATIONS, START);
+ *   const ACT   = { start: START, end: BEATS.b2.start + BEATS.b2.dur };
+ */
+
+// ─────────────────────────────────────────────────────────────── camera paths
+
+/** Catmull-Rom through four control values. C1-continuous, so a waypoint produces no kink. */
+const crom = (p0: number, p1: number, p2: number, p3: number, t: number) =>
+  0.5 *
+  (2 * p1 +
+    (-p0 + p2) * t +
+    (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t +
+    (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+
+/**
+ * A shot on a camera path at u in [0, 1].
+ *
+ * A shot is [x, y, zoom, yaw, pitch, roll]. Pan, orientation and LOG zoom are interpolated — tweening
+ * the raw zoom on a 3–4x push swings the aim point sideways.
+ */
+export function pathAt(shots: number[][], u: number): number[] {
+  const n = shots.length - 1;
+  const tt = Math.min(1, Math.max(0, u)) * n;
+  const i = Math.min(n - 1, Math.floor(tt));
+  const t = tt - i;
+  const g = (j: number) => shots[Math.min(n, Math.max(0, j))];
+  const ch = (j: number, log = false) => {
+    const v = (s: number[]) => (log ? Math.log(s[j]) : s[j] ?? 0);
+    const r = crom(v(g(i - 1)), v(g(i)), v(g(i + 1)), v(g(i + 2)), t);
+    return log ? Math.exp(r) : r;
+  };
+  return [ch(0), ch(1), ch(2, true), ch(3), ch(4), ch(5)];
+}
+
+// ─────────────────────────────────────────────────────────────── helpers
+
+type Tl = {
+  to: (target: unknown, vars: Record<string, unknown>, position: number) => unknown;
+  set: (target: unknown, vars: Record<string, unknown>, position: number) => unknown;
+};
+
+/**
+ * Build the helper set for one act. Every tween in the act goes through these, never through raw
+ * absolute times.
+ *
+ *   shotVars  converts a named shot into camera state (see camera-model.ts.txt → lookAt)
+ *   SHOT      a table of named shots, loaded from a geometry JSON file
+ */
+export function actHelpers<K extends string, S extends string>(
+  tl: Tl,
+  st: object,
+  BEATS: Record<K, Beat>,
+  SHOT: Record<S, number[]>,
+  shotVars: (s: readonly number[]) => Record<string, number>,
+) {
+  const len = (b: K, d: number) => BEATS[b].dur * d;
+  const pos = (b: K, f: number) => BEATS[b].start + BEATS[b].dur * f;
+
+  /** a tween positioned inside a beat: starts at fraction f, lasts fraction d of the beat */
+  const to = (b: K, f: number, d: number, vars: Record<string, unknown>, ease = 'none') =>
+    tl.to(st, { ...vars, duration: len(b, d), ease }, pos(b, f));
+
+  /**
+   * An instant change. ONLY legal while the thing it changes is covered or off screen — anywhere
+   * else it is a pop, and it will look different forwards and backwards. Comment every use.
+   */
+  const cut = (b: K, f: number, vars: Record<string, unknown>) => tl.set(st, vars, pos(b, f));
+
+  /** a camera move inside one place: pan, zoom and orientation together */
+  const look = (b: K, f: number, d: number, shot: S, ease = 'sine.inOut') =>
+    to(b, f, d, shotVars(SHOT[shot]), ease);
+
+  /**
+   * TRAVEL — continuous movement through a path of waypoints, easing out of the shot being held and
+   * into the next hold. Sampled as keyframes, so the path stays a pure function of scroll.
+   *
+   * Waypoints should be REAL PLACES (a counter edge, an arch, a room), named accordingly.
+   */
+  const travel = (
+    b: K,
+    f: number,
+    d: number,
+    keys: S[],
+    ease: (t: number) => number = (t) => t * t * (3 - 2 * t),
+    N = 20,
+  ) => {
+    const shots = keys.map((k) => SHOT[k]);
+    const frames = Array.from({ length: N }, (_, i) => ({
+      ...shotVars(pathAt(shots, ease((i + 1) / N))),
+      duration: len(b, d) / N,
+      ease: 'none',
+    }));
+    tl.to(st, { keyframes: frames }, pos(b, f));
+  };
+
+  /**
+   * APPROACH — a long push toward one object, with an accelerating ease so the object really comes
+   * up to the lens. Used for a threshold, and for very little else.
+   */
+  const approach = (b: K, f: number, d: number, from: S, dest: S) =>
+    travel(b, f, d, [from, dest], (t) => t * t, 14);
+
+  /**
+   * Copy in / out, in FIXED scroll distances (~10vh in, ~7vh out) rather than fractions of a beat,
+   * so copy reads at the same rate everywhere in the film.
+   *
+   * Entry is slower than exit: copy should arrive gently and leave decisively.
+   */
+  const text = (b: K, key: string, inF: number, outBeat?: K, outF = 0) => {
+    tl.to(st, { [key]: 1, duration: 0.1, ease: 'power1.out' }, pos(b, inF));
+    if (outBeat) tl.to(st, { [key]: 2, duration: 0.07, ease: 'power1.in' }, pos(outBeat, outF));
+  };
+
+  /** a threshold bloom: up fast, down slow, straddling the moment it covers */
+  const flare = (b: K, f: number) => {
+    to(b, f - 0.05, 0.05, { portalFlare: 1 }, 'power2.in');
+    to(b, f + 0.01, 0.16, { portalFlare: 0 }, 'power2.out');
+  };
+
+  return { len, pos, to, cut, look, travel, approach, text, flare };
+}
+
+// ─────────────────────────────────────────────────────────────── freeze labels
+
+/**
+ * Publish a freeze point for the settled frame of every beat and the middle of every travel, then
+ * wire `?t=<label>` in development to `timeline.time(labels[label])`.
+ *
+ * This is the highest-leverage debugging tool in the whole architecture. Build it on day one.
+ *
+ *   export const LABELS = {
+ *     table:        at('a1', 0.85),   // the settle
+ *     'to-counter': at('t1', 0.45),   // mid-travel
+ *     counter:      at('b1', 0.75),
+ *   };
+ *
+ * Compile the tooling out of production:
+ *
+ *   const DEV = process.env.NODE_ENV !== 'production';
+ */
+export function labelFor<K extends string>(BEATS: Record<K, Beat>) {
+  return (b: K, f: number) => +(BEATS[b].start + BEATS[b].dur * f).toFixed(3);
+}
+
+// ─────────────────────────────────────────────────────────────── the pacing rule
+/**
+ * Every beat is SOURCE HOLD → TRANSITION → DESTINATION HOLD, with ONE semantic event per
+ * transition, and copy only ever inside a hold.
+ *
+ * Aim for more than half of a long act's scroll to be settled, readable frames. Measure it; do not
+ * estimate it. See shared/FAST_SCROLL_READABILITY.md §5.
+ */

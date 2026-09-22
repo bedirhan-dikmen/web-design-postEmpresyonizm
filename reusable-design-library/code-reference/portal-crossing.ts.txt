@@ -1,0 +1,225 @@
+/**
+ * REFERENCE COPY — not imported by anything. Rename to .ts to use in a new project.
+ * Production source: components/prototype/PortalFilm.tsx (APERTURE, render) +
+ *                    lib/prototype/timeline.ts (Chapter 2) +
+ *                    lib/prototype/chapter4/portals.ts (in-world portals)
+ *
+ * THE THRESHOLD CROSSING
+ *
+ *   SOURCE → APPROACH → ALIGN → FILL FRAME → DESTINATION VISIBLE → CROSS → ARRIVE → SETTLE
+ *
+ * See: opening/OPENING_PORTAL_SKILL.md for the reasoning behind every step.
+ */
+
+import {
+  portalCovers, toScreen, PORTAL, VC,
+  type CameraState, type Viewport,
+} from './camera-model';
+
+// ─────────────────────────────────────────────────────────────── state
+
+export interface PortalState extends CameraState {
+  /** how far the aperture is open (0 closed … 1 = the full square) */
+  aperture: number;
+  /** warm light behind the aperture */
+  glow: number;
+  /** painted speed streaks during the passage */
+  flicks: number;
+  /** light bloom at the threshold */
+  flare: number;
+  /** the carried subset: 0 = part of the source formation, 1 = held by the camera */
+  carry: number;
+}
+
+// ─────────────────────────────────────────────────────────────── the brushy aperture
+
+/**
+ * An irregular outline of the aperture, in normalised (-0.5 … 0.5) coordinates.
+ *
+ * Points are pushed OUTWARD only (up to 7%) so the edge hides under the painted modules that frame
+ * it. A clean rectangle reads as a UI element; this reads as light between painted marks.
+ *
+ * Seeded, so the shape is identical on every load and at every scroll position.
+ */
+export const APERTURE: [number, number][] = (() => {
+  const pts: [number, number][] = [];
+  const per = 9;
+  const corners: [number, number][] = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+  let seed = 3;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let s = 0; s < 4; s++) {
+    const [ax, ay] = corners[s];
+    const [bx, by] = corners[(s + 1) % 4];
+    for (let i = 0; i < per; i++) {
+      const t = i / per;
+      const out = 1 + rnd() * 0.07;
+      pts.push([(ax + (bx - ax) * t) * out, (ay + (by - ay) * t) * out]);
+    }
+  }
+  return pts;
+})();
+
+/**
+ * An even-odd path that is the whole viewport MINUS the aperture — i.e. a hole punched in the
+ * source world, through which the destination is already visible.
+ */
+export function holePath(st: PortalState, vp: Viewport): string {
+  const s = Math.exp(st.logS) * vp.b;
+  const { x: cx, y: cy } = toScreen(vp, st.px, st.py);
+  const hs = s * st.aperture;
+  if (hs <= 0.5) return 'none';
+  const hole = APERTURE
+    .map(([u, v], i) => `${i ? 'L' : 'M'}${(cx + u * hs).toFixed(1)} ${(cy + v * hs).toFixed(1)}`)
+    .join(' ');
+  return `path(evenodd, "M0 0H${vp.vw}V${vp.vh}H0Z ${hole}Z")`;
+}
+
+// ─────────────────────────────────────────────────────────────── the render step
+
+export interface PortalElements {
+  worldA: HTMLElement;
+  worldB: HTMLElement;
+  /** a radial warm-light sprite, 1024×1024, mix-blend-mode: screen */
+  glow: HTMLElement;
+  /** a full-frame bloom, mix-blend-mode: screen */
+  flare: HTMLElement;
+}
+
+/**
+ * The whole crossing, per frame.
+ *
+ * Note that BOTH world containers are hidden while the portal covers the viewport — at that moment
+ * the portal's own layer is what is drawing.
+ */
+export function renderCrossing(st: PortalState, vp: Viewport, el: PortalElements): void {
+  const inB = st.world >= 0.5;
+  const covers = portalCovers(st, vp);
+
+  const showA = inB || covers ? 'none' : 'block';
+  const showB = inB && !covers ? 'block' : 'none';
+  if (el.worldA.style.display !== showA) el.worldA.style.display = showA;
+  if (el.worldB.style.display !== showB) el.worldB.style.display = showB;
+
+  if (!inB && !covers) {
+    el.worldA.style.clipPath = holePath(st, vp);
+
+    // the warm light behind the aperture, fading out as the square grows past the frame so it never
+    // becomes a full-screen wash
+    const s = Math.exp(st.logS) * vp.b;
+    const { x: cx, y: cy } = toScreen(vp, st.px, st.py);
+    const gs = Math.max(s * 7, 1100 * vp.b);
+    el.glow.style.opacity = String(st.glow * Math.max(0, Math.min(1, (3000 - s) / 1600)));
+    el.glow.style.transform =
+      `translate3d(${cx - gs / 2}px, ${cy - gs / 2}px, 0) scale(${gs / 1024})`;
+  }
+
+  el.flare.style.opacity = String(st.flare * 0.8);
+}
+
+// ─────────────────────────────────────────────────────────────── the timeline
+
+export const PEAK_SIZE = 7000;   // portal side length at the switch, in design units
+
+/**
+ * Build the crossing on a paused master timeline. Times are in timeline units (1 unit = 100vh).
+ *
+ *   t0        the approach begins (the camera has been leaning toward the object already)
+ *   tSwitch   the world switch — MUST be under full cover
+ *   tSettled  the arrival pull-back has finished
+ *
+ * The arrival is roughly as long as the push. That ratio is what makes a crossing land.
+ */
+export function buildCrossing(
+  tl: { to: (t: unknown, v: Record<string, unknown>, p: number) => unknown;
+        set: (t: unknown, v: Record<string, unknown>, p: number) => unknown },
+  st: PortalState,
+  t0: number,
+  tSwitch: number,
+  tSettled: number,
+): void {
+  const push = tSwitch - t0;
+
+  // APPROACH + ALIGN — centring finishes well before the push peaks, so the last stretch is axial
+  tl.to(st, { logS: Math.log(PEAK_SIZE), duration: push, ease: 'power2.inOut' }, t0);
+  tl.to(st, { px: VC.x, py: VC.y, duration: push * 0.77, ease: 'power2.inOut' }, t0);
+
+  // the object opens and lights up
+  tl.to(st, { glow: 1, duration: push * 0.51, ease: 'sine.in' }, t0);
+  tl.to(st, { aperture: 1, duration: push * 0.38, ease: 'power1.inOut' }, t0);
+
+  // the carried subset detaches BEFORE the frame fills, so it is seen leaving and then in flight
+  tl.to(st, { carry: 1, duration: push * 0.54, ease: 'sine.inOut' }, t0 + push * 0.13);
+
+  // the passage
+  tl.to(st, { flicks: 1, duration: push * 0.41, ease: 'power1.in' }, t0 + push * 0.28);
+
+  // the flare STRADDLES the switch: fast bloom before, slow decay after
+  tl.to(st, { flare: 1, duration: push * 0.26, ease: 'power2.in' }, tSwitch - push * 0.26);
+  tl.set(st, { world: 1 }, tSwitch);                                  // instant, under full cover
+  tl.to(st, { flare: 0, duration: push * 0.49, ease: 'power1.out' }, tSwitch);
+  tl.to(st, { flicks: 0, duration: push * 0.44, ease: 'power1.out' }, tSwitch);
+
+  // ARRIVE + SETTLE — the object is re-read as a feature of the new world
+  tl.to(
+    st,
+    {
+      logS: Math.log(PORTAL.B.size),
+      px: PORTAL.B.cx,
+      py: PORTAL.B.cy,
+      duration: tSettled - tSwitch,
+      ease: 'power2.inOut',
+    },
+    tSwitch,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────── in-world portals
+
+/**
+ * A portal that changes LEVEL inside one world (rather than switching worlds) renders the
+ * destination through a second camera inside a clipped layer, and cuts the main camera only under
+ * full cover.
+ */
+export const IN_WORLD = {
+  /** portal progress at which the camera behind the window is cut to the destination */
+  CUT: 0.93,
+  /** until here the window is exactly the object; after it, it opens past the viewport */
+  PHYSICAL: 0.55,
+  /** from here it covers the whole screen */
+  COVER: 0.86,
+} as const;
+
+/** the object's projected rectangle, opening out to a gate that overshoots every viewport edge */
+export function portalRect(
+  objectRect: { x: number; y: number; w: number; h: number; r: number },
+  progress: number,
+  vp: Viewport,
+  ease: (t: number) => number,
+) {
+  const gate = { x: -vp.vw * 0.07, y: -vp.vh * 0.07, w: vp.vw * 1.14, h: vp.vh * 1.14, r: 26 * vp.b };
+  const t = ease(
+    Math.max(0, Math.min(1, (progress - IN_WORLD.PHYSICAL) / (IN_WORLD.COVER - IN_WORLD.PHYSICAL))),
+  );
+  const lerp = (a: number, b: number) => a + (b - a) * t;
+  const r = {
+    x: lerp(objectRect.x, gate.x), y: lerp(objectRect.y, gate.y),
+    w: lerp(objectRect.w, gate.w), h: lerp(objectRect.h, gate.h),
+    r: lerp(objectRect.r, gate.r),
+  };
+  // once the rect reaches past every edge, shrink the corner radius to 0 — otherwise the rounding
+  // leaks the old world at full cover
+  const past = Math.min(-r.x, -r.y, r.x + r.w - vp.vw, r.y + r.h - vp.vh);
+  r.r = r.r * Math.max(0, Math.min(1, 1 - past / Math.max(1, r.r)));
+  return r;
+}
+
+/**
+ * IMPORTANT for reverse scroll: when no portal channel is strictly inside (0, 1), run a full clear
+ * of the portal layer — hide the clip, hide the rim, reset the transforms. Otherwise scrolling back
+ * past a portal leaves its rim on screen.
+ */
+export function clearPortal(els: { clip: HTMLElement; rim: HTMLElement }): void {
+  els.clip.style.visibility = 'hidden';
+  els.rim.style.visibility = 'hidden';
+  els.clip.style.clipPath = '';
+}

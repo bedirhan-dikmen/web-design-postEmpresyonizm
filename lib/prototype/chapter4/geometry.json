@@ -1,0 +1,740 @@
+{
+  "_doc": "Chapter 4 world geometry in World B design units (same space as the restaurant wall). Shared by the placeholder painters (scripts/art/chapter4-*.mjs) and the story engine (lib/prototype/chapter4/*). Phase 4.9: ONE restaurant world — dining, kitchen, service/counter and the office above it are connected by real openings (the hatch arch at x 2240-2380 and the service arch at x 4980-5080), and the camera travels through them instead of cutting. Only one portal remains inside the chapter (the closed table's status tile -> the management workstation). See CHAPTER4_ARTWORK.md.",
+  "floors": {
+    "officeRoofTop": -2080,
+    "officeFloor": -420,
+    "groundCeiling": -330,
+    "groundFloorLine": 840,
+    "groundSlab": [
+      1290,
+      1400
+    ],
+    "storeFloorLine": 2520
+  },
+  "tableTent": [
+    1245,
+    715
+  ],
+  "menu": {
+    "center": [
+      1150,
+      390
+    ],
+    "tile": 150,
+    "gap": 26,
+    "header": 50,
+    "selected": 1
+  },
+  "dining": {
+    "guestSeat": [
+      1830,
+      905
+    ],
+    "phoneRest": [
+      1795,
+      785
+    ],
+    "phoneScan": [
+      1690,
+      600
+    ],
+    "phoneScale": 0.55,
+    "depth": -0.28,
+    "tablePlate": [
+      1545,
+      690
+    ],
+    "waiterFrom": [
+      2260,
+      900
+    ],
+    "waiterTo": [
+      2020,
+      900
+    ],
+    "waiterDepth": -0.2,
+    "waiterScale": 0.8,
+    "doneTag": [
+      1120,
+      545,
+      1370,
+      585
+    ]
+  },
+  "kitchen": {
+    "hatchWall": [
+      2240,
+      2380
+    ],
+    "hatch": [
+      300,
+      840
+    ],
+    "printer": [
+      2660,
+      548
+    ],
+    "printerShelf": [
+      2470,
+      2880,
+      610
+    ],
+    "kdsScreen": [
+      3040,
+      60,
+      3640,
+      410
+    ],
+    "kdsCenter": [
+      3340,
+      235
+    ],
+    "callerPhone": [
+      2960,
+      470
+    ],
+    "pass": [
+      2940,
+      4980,
+      650
+    ],
+    "heatLamps": [
+      3200,
+      3620,
+      4040,
+      4460
+    ],
+    "chef": [
+      4560,
+      650
+    ],
+    "stove": [
+      4380,
+      4760,
+      650
+    ],
+    "hood": [
+      4400,
+      -330,
+      4760,
+      110
+    ],
+    "calmText": [
+      3640,
+      -10,
+      4040,
+      240
+    ],
+    "passWindow": [
+      4980,
+      5080,
+      300,
+      840
+    ],
+    "hatchShelf": [
+      2330,
+      640
+    ],
+    "archHead": 430,
+    "passShelf": 650
+  },
+  "service": {
+    "counter": [
+      5300,
+      6460,
+      590
+    ],
+    "cashier": [
+      5840,
+      590
+    ],
+    "cashierScreen": [
+      6120,
+      342,
+      450,
+      270
+    ],
+    "waiter": [
+      6540,
+      840
+    ],
+    "window": [
+      6120,
+      -170,
+      6600,
+      300
+    ],
+    "lamp": [
+      6320,
+      -330
+    ],
+    "shaft": [
+      7000,
+      7260
+    ],
+    "calmText": [
+      5420,
+      160,
+      5774,
+      276
+    ],
+    "handoff": [
+      5100,
+      5260,
+      650
+    ],
+    "tray": [
+      5180,
+      590
+    ]
+  },
+  "storeroom": {
+    "binsCenter": [
+      5150,
+      2020
+    ],
+    "binXs": [
+      -330,
+      -110,
+      110,
+      330
+    ],
+    "binSize": [
+      170,
+      200
+    ],
+    "binLabels": [
+      "Domates",
+      "Un",
+      "Yeşillik",
+      "Zeytinyağı"
+    ],
+    "shelf": [
+      4700,
+      5620,
+      2125
+    ],
+    "bulb": [
+      5150,
+      1600
+    ],
+    "keeper": [
+      5700,
+      2520
+    ],
+    "tablet": [
+      5620,
+      2196
+    ],
+    "stairs": [
+      3900,
+      4500
+    ],
+    "calmText": [
+      4640,
+      1640,
+      5080,
+      1850
+    ]
+  },
+  "office": {
+    "monitorCenter": [
+      4500,
+      -940
+    ],
+    "monitorScreen": [
+      600,
+      360
+    ],
+    "ledgerCenter": [
+      4500,
+      -910
+    ],
+    "ledgerSheet": [
+      420,
+      280
+    ],
+    "desk": [
+      3960,
+      5200,
+      -640
+    ],
+    "floorLine": -460,
+    "manager": [
+      3830,
+      -460
+    ],
+    "invoice": [
+      5040,
+      -700
+    ],
+    "lamp": [
+      4060,
+      -700
+    ],
+    "window": [
+      2780,
+      -1620,
+      3260,
+      -900
+    ],
+    "clock": [
+      3560,
+      -1460
+    ],
+    "binders": [
+      5260,
+      -1640,
+      5840,
+      -640
+    ],
+    "cabinet": [
+      3320,
+      -920,
+      3640,
+      -460
+    ],
+    "calmText": [
+      3960,
+      -1300,
+      4420,
+      -1130
+    ]
+  },
+  "roof": {
+    "deck": [
+      2100,
+      6500,
+      -2200,
+      -2080
+    ],
+    "chartBase": [
+      4000,
+      -2080
+    ],
+    "skyline": -2160
+  },
+  "finder": {
+    "center": [
+      3250,
+      -2780
+    ],
+    "cell": 64,
+    "screen": [
+      300,
+      830,
+      17
+    ]
+  },
+  "flowPath": [
+    [
+      1150,
+      327
+    ],
+    [
+      2000,
+      200
+    ],
+    [
+      3500,
+      100
+    ],
+    [
+      5700,
+      250
+    ],
+    [
+      6260,
+      350
+    ],
+    [
+      4800,
+      300
+    ],
+    [
+      3300,
+      420
+    ],
+    [
+      2860,
+      400
+    ],
+    [
+      3100,
+      300
+    ],
+    [
+      3340,
+      235
+    ],
+    [
+      4700,
+      200
+    ],
+    [
+      6260,
+      352
+    ],
+    [
+      6600,
+      0
+    ],
+    [
+      6300,
+      -600
+    ],
+    [
+      5200,
+      -900
+    ],
+    [
+      4500,
+      -930
+    ],
+    [
+      4500,
+      -910
+    ],
+    [
+      4460,
+      -1360
+    ],
+    [
+      4180,
+      -1800
+    ],
+    [
+      4000,
+      -2080
+    ]
+  ],
+  "anchors": {
+    "ticket": 0,
+    "cashier": 4,
+    "printer": 7,
+    "kds": 9,
+    "pos": 11,
+    "bins": 15,
+    "ledger": 16,
+    "chart": 19
+  },
+  "camera": {
+    "_doc": "Phase 4.9 shots: [x, y, zoom, yaw, pitch, roll]. (x, y) is the wall-plane point at the screen centre; yaw/pitch/roll (degrees) orient the painted section in 3D (stage3d.ts). Every restaurant move is a continuous camera travel between these shots; the only cut in the chapter is inside the management portal, while its window covers the screen.",
+    "tableHuman": [
+      1360,
+      600,
+      0.95,
+      4,
+      -2,
+      0
+    ],
+    "scan": [
+      1470,
+      640,
+      1.45,
+      6,
+      -3,
+      0.3
+    ],
+    "table": [
+      1480,
+      610,
+      1.25,
+      2,
+      -2,
+      0
+    ],
+    "tableWide": [
+      1420,
+      600,
+      1.05,
+      0,
+      -1,
+      0
+    ],
+    "tableBack": [
+      1520,
+      540,
+      0.74,
+      -4,
+      -1,
+      -0.1
+    ],
+    "hatchArch": [
+      2620,
+      540,
+      0.66,
+      -7,
+      -1,
+      -0.2
+    ],
+    "kitchenPass": [
+      4350,
+      470,
+      0.6,
+      -11,
+      -1,
+      -0.3
+    ],
+    "zoneCounter": [
+      5960,
+      300,
+      0.95,
+      -14,
+      -2,
+      -0.5
+    ],
+    "cashierRow": [
+      6090,
+      330,
+      1.62,
+      -11,
+      -1,
+      -0.3
+    ],
+    "ticketCounter": [
+      5640,
+      360,
+      1.2,
+      -9,
+      -1,
+      -0.2
+    ],
+    "passThrough": [
+      5030,
+      500,
+      0.92,
+      0,
+      0,
+      0
+    ],
+    "ticketKitchen": [
+      3950,
+      400,
+      0.95,
+      5,
+      -1,
+      0.2
+    ],
+    "kitchenTicket": [
+      3010,
+      350,
+      0.95,
+      8,
+      -2,
+      0.3
+    ],
+    "printer": [
+      2760,
+      470,
+      1.45,
+      8,
+      -2,
+      0.3
+    ],
+    "kds": [
+      3340,
+      300,
+      1.15,
+      5,
+      -1,
+      0
+    ],
+    "stove": [
+      4430,
+      380,
+      1.1,
+      3,
+      -1,
+      0
+    ],
+    "passTrack": [
+      3600,
+      470,
+      1.12,
+      6,
+      -1,
+      0
+    ],
+    "hatchSide": [
+      2480,
+      520,
+      1.3,
+      9,
+      -1,
+      0
+    ],
+    "hatchThrough": [
+      2260,
+      560,
+      0.78,
+      -2,
+      3,
+      0
+    ],
+    "waiterArrive": [
+      2170,
+      630,
+      1.42,
+      -6,
+      5,
+      0
+    ],
+    "walkMid": [
+      1900,
+      640,
+      1.3,
+      -1,
+      5,
+      0
+    ],
+    "bothWide": [
+      4700,
+      330,
+      0.52,
+      -6,
+      -1,
+      0
+    ],
+    "paymentArrive": [
+      6120,
+      380,
+      1.3,
+      -10,
+      -2,
+      -0.4
+    ],
+    "payClose": [
+      6180,
+      358,
+      1.72,
+      -8,
+      -1,
+      -0.3
+    ],
+    "tableDoneWide": [
+      1350,
+      600,
+      0.9,
+      0,
+      -1,
+      0
+    ],
+    "tableDone": [
+      1400,
+      600,
+      1.15,
+      0,
+      -2,
+      0
+    ],
+    "tagPush": [
+      1165,
+      558,
+      2.3,
+      0,
+      -1,
+      0
+    ],
+    "monitorTile": [
+      4560,
+      -950,
+      3.2,
+      0,
+      0,
+      0
+    ],
+    "monitorArrive": [
+      4540,
+      -955,
+      2.3,
+      0,
+      0,
+      0
+    ],
+    "office": [
+      4370,
+      -950,
+      1.28,
+      0,
+      -1,
+      0
+    ],
+    "deskWide": [
+      4470,
+      -900,
+      0.98,
+      -7,
+      -2,
+      -0.2
+    ],
+    "officePull": [
+      4430,
+      -1010,
+      1.06,
+      -3,
+      -2,
+      0
+    ],
+    "officeWide": [
+      4340,
+      -1060,
+      0.76,
+      4,
+      -3,
+      0.2
+    ],
+    "officeLife": [
+      4400,
+      -230,
+      0.4,
+      -3,
+      -1,
+      0
+    ]
+  },
+  "ticket": {
+    "_doc": "Phase 4.10: the Masa 7 order ticket, a physical slip the camera follows from the till to the kitchen printer. path = [x, y, scale] waypoints, one per camera waypoint of the t2 travel (cashierRow, ticketCounter, passThrough, ticketKitchen, kitchenTicket), interpolated with the same curve and easing as the camera. slot = where it goes into the printer. size = design size of the slip at scale 1. depth 0: on the wall plane, so the ticket sits exactly where the path puts it under every camera (a depth offset this far from the world origin would parallax it hundreds of units off its route).",
+    "size": [
+      200,
+      280
+    ],
+    "depth": 0,
+    "path": [
+      [
+        5980,
+        250,
+        0.55
+      ],
+      [
+        5560,
+        300,
+        0.75
+      ],
+      [
+        5030,
+        470,
+        0.85
+      ],
+      [
+        3900,
+        360,
+        0.95
+      ],
+      [
+        2700,
+        380,
+        1
+      ]
+    ],
+    "slot": [
+      2660,
+      455,
+      0.42
+    ],
+    "extraPass": [
+      3340,
+      600
+    ]
+  }
+}

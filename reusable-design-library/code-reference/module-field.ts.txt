@@ -1,0 +1,361 @@
+/**
+ * REFERENCE COPY — not imported by anything. Rename to .ts to use in a new project.
+ * Production source: lib/prototype/moduleField.ts
+ *
+ * THE MODULE FIELD — one persistent pool of painted marks that plays every role in the film.
+ *
+ * Distilled: the production class also carries this project's formations, flow path, 3D stage and
+ * five acts' worth of behaviour. What is kept here is the reusable core — construction, tinting,
+ * the dab primitive, culling, near-fade, and formation morphing.
+ *
+ * See: shared/MODULE_FIELD_SKILL.md
+ */
+
+import { cameraFor, layerTransform, type Camera, type LayerXf, type Viewport } from './camera-model';
+import { mulberry32, assignSlots, DATA, RING, GOLD, DUST, type Formation } from './qr-geometry';
+
+// ─────────────────────────────────────────────────────────────── atlas
+
+/**
+ * A strip of N square cells: a light-grey painted square with visible brush texture, on
+ * transparency. Tinted at runtime, so one atlas serves every colour.
+ *
+ * Memory for the tint cache is tints × count × tintCell² × 4 bytes:
+ *   7 × 8 × 256² × 4 B ≈ 15 MB      7 × 8 × 512² × 4 B ≈ 58 MB
+ * Keep tintCell at 256 unless you have measured a need on target hardware.
+ */
+export const ATLAS = { src: '/assets/dabs.png', count: 8, cell: 256, tintCell: 256 } as const;
+
+const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+// ─────────────────────────────────────────────────────────────── a module
+
+/**
+ * Everything a module needs, for every formation, computed ONCE in the constructor from a seeded
+ * RNG. Per frame, only interpolation happens.
+ */
+export interface Mod {
+  /** fixed for life — identity is the whole point */
+  role: number;
+  variant: number;
+  phase: number;
+
+  /** source world: scattered position (x, y, depth, size) */
+  sx: number; sy: number; sd: number; ss: number;
+  /** source world: formation cell */
+  qx: number; qy: number; qs: number;
+
+  /** destination world: free position */
+  dx: number; dy: number; dd: number; ds: number;
+  /** destination world: target */
+  tx: number; ty: number; td: number; ts: number;
+
+  /** per-module stagger */
+  aDelay: number;
+  bDelay: number;
+  /** how far its flight arcs */
+  curve: number;
+  starColor: string;
+
+  /** the carried subset only: a screen-space formation held by the camera */
+  carryX: number; carryY: number;
+}
+
+// ─────────────────────────────────────────────────────────────── the field
+
+export class ModuleField {
+  private mods: Mod[] = [];
+  private atlas: HTMLImageElement | null = null;
+  private atlasCell = ATLAS.cell;
+  private tinted = new Map<string, HTMLCanvasElement>();
+  private glowSprite: HTMLCanvasElement | null = null;
+  private xf: LayerXf = { m: 1, tx: 0, ty: 0, ok: true };
+
+  /** participants in the formation chain, with their slot in each formation */
+  private participants: { m: Mod; slots: number[]; delay: number; curve: number }[] = [];
+
+  constructor(
+    matrix: boolean[][],
+    formations: Formation[],
+    grid: { x: number; y: number; cell: number; n: number },
+    colors: { star: string; mist: string; gold: string; cream: string; ink: string },
+  ) {
+    const rand = mulberry32(7);
+    const n = grid.n;
+
+    /**
+     * Art-directed randomness: random within rules. The exclusion below keeps the copy area quiet
+     * without making the field look gridded.
+     */
+    const scatter = () => {
+      let x = -120 + rand() * 2160;
+      const y = -60 + rand() * 960;
+      if (x < 820 && y > 260 && y < 720 && rand() < 0.6) x = 820 + rand() * 1200;
+      return { x, y };
+    };
+
+    const make = (role: number, r: number, c: number): Mod => {
+      const s = scatter();
+      const isCode = role === DATA || role === RING || role === GOLD;
+      const finderDist = Math.min(
+        Math.hypot(r - 3, c - 3),
+        Math.hypot(r - 3, c - (n - 4)),
+        Math.hypot(r - (n - 4), c - 3),
+      );
+      return {
+        role,
+        variant: (rand() * ATLAS.count) | 0,
+        phase: rand() * Math.PI * 2,
+        sx: s.x, sy: s.y,
+        sd: isCode ? -rand() * 0.35 : -0.06 - rand() * 0.5,
+        ss: 5 + rand() * 7,
+        qx: grid.x + (c + 0.5) * grid.cell,
+        qy: grid.y + (r + 0.5) * grid.cell,
+        qs: grid.cell * 0.94,
+        // finders first, then the rest sweeping in from the finder corners
+        aDelay: isCode ? clamp01(finderDist / 26) * 0.5 + rand() * 0.06 : 0,
+        curve: (rand() - 0.5) * 260,
+        starColor: rand() < 0.2 ? colors.mist : rand() < 0.04 ? colors.gold : colors.star,
+        dx: 0, dy: 0, dd: -0.07 - rand() * 0.42, ds: 3 + rand() * 5,
+        tx: 0, ty: 0, td: 0, ts: grid.cell * 0.2,
+        bDelay: clamp01(Math.hypot(r - 12, c - 12) / 18) * 0.45 + rand() * 0.08,
+        carryX: 960 + (c - 3) * 74 + (rand() - 0.5) * 20,
+        carryY: 540 + (r - 3) * 74 + (rand() - 0.5) * 20,
+      };
+    };
+
+    for (let r = 0; r < n; r++)
+      for (let c = 0; c < n; c++) {
+        if (!matrix[r][c]) continue;
+        const inTopLeftFinder = r < 7 && c < 7;
+        const isCore = inTopLeftFinder && r >= 2 && r <= 4 && c >= 2 && c <= 4;
+        this.mods.push(make(inTopLeftFinder ? (isCore ? GOLD : RING) : DATA, r, c));
+      }
+    for (let i = 0; i < 170; i++) this.mods.push(make(DUST, 0, 0));
+
+    // slot assignment: ONCE, at startup, never at runtime
+    const r2 = mulberry32(4004);
+    const parts = this.mods.filter((m) => m.role === DATA || m.role === GOLD);
+    const isGold = parts.map((m) => m.role === GOLD);
+    const per = formations.map((f) => (f.slots.length ? assignSlots(f, isGold) : []));
+    this.participants = parts.map((m, i) => ({
+      m,
+      slots: per.map((a) => a[i] ?? 0),
+      delay: r2() * 0.35,
+      curve: 20 + r2() * 70,
+    }));
+  }
+
+  // ─────────────────────────────────────────────── sprites
+
+  setAtlas(img: HTMLImageElement): void {
+    this.atlas = img;
+    this.tinted.clear();
+    this.atlasCell = img.naturalHeight || ATLAS.cell;
+
+    const g = document.createElement('canvas');
+    g.width = g.height = 128;
+    const gx = g.getContext('2d')!;
+    const grad = gx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(255,214,130,0.75)');
+    grad.addColorStop(0.35, 'rgba(255,196,110,0.28)');
+    grad.addColorStop(1, 'rgba(255,196,110,0)');
+    gx.fillStyle = grad;
+    gx.fillRect(0, 0, 128, 128);
+    this.glowSprite = g;
+  }
+
+  /**
+   * A dab tinted with a colour, preserving the painted texture.
+   *
+   *   fill colour → 'multiply' with the atlas cell → 'destination-in' with it again
+   *
+   * Cached per (variant, colour). Keep the palette small: every new tint multiplies the cache.
+   */
+  private sprite(variant: number, color: string): HTMLCanvasElement | null {
+    if (!this.atlas) return null;
+    const key = `${variant}|${color}`;
+    const hit = this.tinted.get(key);
+    if (hit) return hit;
+
+    const cell = this.atlasCell;
+    const size = Math.min(cell, ATLAS.tintCell);
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const x = c.getContext('2d')!;
+    x.fillStyle = color;
+    x.fillRect(0, 0, size, size);
+    x.globalCompositeOperation = 'multiply';
+    x.drawImage(this.atlas, variant * cell, 0, cell, cell, 0, 0, size, size);
+    x.globalCompositeOperation = 'destination-in';
+    x.drawImage(this.atlas, variant * cell, 0, cell, cell, 0, 0, size, size);
+    this.tinted.set(key, c);
+    return c;
+  }
+
+  // ─────────────────────────────────────────────── drawing
+
+  /**
+   * `st` is the flat film state; `clock` is the WALL CLOCK, used only for ambience. Ambience must
+   * never be story-bearing: it is not reproducible from a scroll position.
+   */
+  draw(
+    ctx: CanvasRenderingContext2D,
+    st: { logS: number; px: number; py: number; world: number; assemble: number; carry: number; form: number },
+    vp: Viewport,
+    dpr: number,
+    clock: number,
+    formations: Formation[],
+    colors: { star: string; gold: string; cream: string; ink: string },
+  ): void {
+    const { b, ox, oy } = vp;
+    const K = b * dpr;
+    const inB = st.world >= 0.5;
+    const cam = cameraFor(inB ? 'B' : 'A', st as never);
+    const xf = this.xf;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    /** design-screen units in, device pixels out; culled and rejected as cheaply as possible */
+    const dab = (
+      x: number, y: number, size: number, rot: number,
+      variant: number, color: string, alpha: number,
+    ) => {
+      if (alpha <= 0.01 || size <= 0.3) return;                 // cheapest reject first
+      const px = (x * b + ox) * dpr;
+      const py = (y * b + oy) * dpr;
+      const ps = size * K;
+      if (px < -ps || py < -ps || px > ctx.canvas.width + ps || py > ctx.canvas.height + ps) return;
+      const spr = this.sprite(variant, color);
+      if (!spr) return;
+      const cos = Math.cos(rot) * ps;
+      const sin = Math.sin(rot) * ps;
+      ctx.globalAlpha = alpha;
+      ctx.setTransform(cos, sin, -sin, cos, px, py);
+      ctx.drawImage(spr, -0.5, -0.5, 1, 1);
+    };
+
+    /**
+     * Modules at negative depth grow enormous as they pass the lens. Without this, one dab becomes
+     * a full-screen grey rectangle at the threshold.
+     */
+    const nearFade = (screenSize: number) => clamp01((260 - screenSize) / 140);
+
+    const project = (x: number, y: number, depth: number, size: number) => {
+      layerTransform(cam, depth, xf);
+      if (!xf.ok) return null;
+      return { x: x * xf.m + xf.tx, y: y * xf.m + xf.ty, s: size * xf.m };
+    };
+
+    // ── scatter → formation (the assembly) ──────────────────────────────────
+    for (const m of this.mods) {
+      if (m.role === GOLD) continue;                            // drawn last, on top
+
+      const wob = Math.sin(clock * 0.6 + m.phase);
+      const wob2 = Math.cos(clock * 0.45 + m.phase * 1.7);
+
+      const isCode = m.role === DATA || m.role === RING;
+      const e = isCode ? ease(clamp01((st.assemble - m.aDelay) / 0.5)) : 0;
+      const free = 1 - e;                                        // ambience damps to zero as it lands
+      const arc = Math.sin(Math.PI * e) * m.curve;
+
+      const p = project(
+        lerp(m.sx, m.qx, e) + arc * 0.35 + wob * 7 * free,
+        lerp(m.sy, m.qy, e) - arc * 0.2 + wob2 * 5 * free,
+        lerp(m.sd, 0, e),
+        lerp(m.ss, m.qs, e),
+      );
+      if (!p) continue;
+
+      const twinkle = free * (0.25 + 0.25 * Math.sin(clock * 1.3 + m.phase * 3));
+      dab(
+        p.x, p.y, p.s,
+        (m.phase - 3) * 0.05 * (0.4 + free),
+        m.variant,
+        e > 0.5 ? colors.star : m.starColor,                     // HARD swap at the crossover
+        (0.72 + 0.28 * e - twinkle) * nearFade(p.s),
+      );
+    }
+
+    // ── the carried subset: part of the formation → held by the camera ──────
+    for (const m of this.mods) {
+      if (m.role !== GOLD) continue;
+      const wob = Math.sin(clock * 0.7 + m.phase);
+      const wob2 = Math.cos(clock * 0.55 + m.phase);
+      const carry = { x: m.carryX + wob * 10, y: m.carryY + wob2 * 8, s: 30 };
+
+      const e = ease(clamp01((st.assemble - m.aDelay) / 0.5));
+      const p = project(
+        lerp(m.sx, m.qx, e), lerp(m.sy, m.qy, e),
+        lerp(m.sd, 0, e), lerp(m.ss, m.qs, e),
+      ) ?? carry;
+
+      const c = ease(clamp01(st.carry));
+      const x = lerp(p.x, carry.x, c);
+      const y = lerp(p.y, carry.y, c);
+      const s = lerp(Math.min(p.s, 400), carry.s, c);
+
+      if (this.glowSprite && s < 200) {                          // glow only while small on screen
+        ctx.globalCompositeOperation = 'lighter';
+        const gs = s * 4.2 * K;
+        ctx.globalAlpha = 0.55;
+        ctx.setTransform(gs, 0, 0, gs, (x * b + ox) * dpr, (y * b + oy) * dpr);
+        ctx.drawImage(this.glowSprite, -0.5, -0.5, 1, 1);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      dab(x, y, s, (m.phase - 3) * 0.06, m.variant, colors.gold, 0.97);
+    }
+
+    // ── formation → formation (the morph) ───────────────────────────────────
+    if (st.form > 1e-6) this.drawMorph(st, formations, dab, project);
+
+    ctx.globalAlpha = 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /**
+   * Morphing along a continuous channel: st.form = 2.5 means halfway from formation 2 to 3.
+   *
+   * The GOLD SUBJECT LEADS (delay × 0.15) and the rest of the material follows it. That one factor
+   * is most of why the morph reads as intentional rather than as a slide transition.
+   */
+  private drawMorph(
+    st: { form: number },
+    formations: Formation[],
+    dab: (x: number, y: number, size: number, rot: number, v: number, c: string, a: number) => void,
+    project: (x: number, y: number, d: number, s: number) => { x: number; y: number; s: number } | null,
+  ): void {
+    const f = Math.min(formations.length - 1, st.form);
+    const k = Math.min(formations.length - 2, Math.floor(f));
+    const p = f - k;
+
+    for (const { m, slots, delay, curve } of this.participants) {
+      const A = formations[k].slots[slots[k]];
+      const B = formations[k + 1].slots[slots[k + 1]];
+      if (!A || !B) continue;
+
+      const lead = B.gold || A.gold;
+      const e = ease(clamp01((p - delay * (lead ? 0.15 : 1)) / 0.65));
+      const arc = Math.sin(Math.PI * e) * curve * 0.5;
+
+      const q = project(
+        lerp(A.x, B.x, e),
+        lerp(A.y, B.y, e) - arc,
+        0,
+        lerp(A.size, B.size, e),
+      );
+      if (!q) continue;
+
+      dab(q.x, q.y, q.s, (m.phase - 3) * 0.03, m.variant, e < 0.5 ? A.color : B.color, 0.95);
+    }
+  }
+}
+
+/**
+ * REVERSE SCROLL: every position above is f(state, constants, clock). No accumulation, no velocity
+ * integration, no "previous position" stored between frames. Slot assignments and seeded positions
+ * are built at construction and never mutated. That is what makes the field reverse for free.
+ */

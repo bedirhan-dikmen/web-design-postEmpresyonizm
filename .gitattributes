@@ -1,0 +1,6 @@
+# keep LF everywhere so the Dockerfile and scripts behave the same on the Linux server
+* text=auto eol=lf
+*.png binary
+*.webp binary
+*.jpg binary
+*.ico binary

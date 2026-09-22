@@ -1,0 +1,18 @@
+{
+  "_doc": "Brand data and the canonical address for the homepage. Deployment values (contact channels, form endpoint, a URL override) come from NEXT_PUBLIC_* environment variables: see .env.example and lib/site/config.ts. A null is a placeholder: nothing is rendered for it, and `npm run check:launch` lists it. See LAUNCH_CHECKLIST.md.",
+  "name": "Kerinti",
+  "description": "Restoran ve yeme-içme işletmeleri için dijital operasyon çözümleri.",
+  "product": "NeXa",
+  "url": "https://kerinti.com.tr",
+  "_url": "Canonical origin WITHOUT a trailing slash. The final QR encodes `${url}/#iletisim`. NEXT_PUBLIC_SITE_URL overrides it (e.g. for a staging host).",
+  "contactAnchor": "iletisim",
+  "social": {
+    "linkedin": null
+  },
+  "legal": {
+    "kvkk": null,
+    "privacy": null,
+    "cookies": null,
+    "_legal": "site paths of pages that EXIST, e.g. \"/kvkk\". While null, no link is rendered anywhere."
+  }
+}

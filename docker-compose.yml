@@ -1,0 +1,40 @@
+# Kerinti Soft website: one service, standard Docker Compose (works from the terminal and as a CasaOS custom app).
+# Values come from .env next to this file (copy .env.example). Nothing secret belongs here or in .env's
+# NEXT_PUBLIC_* values; Cloudflare Tunnel runs separately and is not part of this stack.
+
+name: kerinti-web
+
+services:
+  kerinti-web:
+    container_name: kerinti-web
+    image: kerinti-web:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # the homepage is prerendered at build time: these are baked into the page, so change → rebuild
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+        NEXT_PUBLIC_CONTACT_PHONE: ${NEXT_PUBLIC_CONTACT_PHONE:-}
+        NEXT_PUBLIC_CONTACT_ADDRESS: ${NEXT_PUBLIC_CONTACT_ADDRESS:-}
+        NEXT_PUBLIC_CONTACT_FORM_ENDPOINT: ${NEXT_PUBLIC_CONTACT_FORM_ENDPOINT:-}
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${APP_PORT:-3020}:3020"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3020
+      NEXT_TELEMETRY_DISABLED: 1
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3020/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

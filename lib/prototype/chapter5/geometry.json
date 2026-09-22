@@ -1,0 +1,283 @@
+{
+  "_doc": "Chapter 5 world geometry, in World B design units (the same space as the Chapter 4 restaurant). The Kerinti night is built ABOVE and TO THE RIGHT of the restaurant building, so the camera can travel there without a portal: up out of the management office, over the night city, into the Kerinti sky, down the Kerinti tower into its cut-away studio floor, and back up into the sky where the final QR assembles. Shared by the painters (scripts/art/chapter5-*.mjs) and the engine (lib/prototype/chapter5/*).",
+  "plates": {
+    "_doc": "[x, y, w, h] design rect and pixels per design unit. Drawn above the night veil, in this order. The sky reaches down to y −2200 (the restaurant roof line) and fades in with st.night; the city plate is transparent above y −2450, so the two read as one sky.",
+    "sky": {
+      "rect": [
+        -2600,
+        -12200,
+        22000,
+        10000
+      ],
+      "k": 0.16
+    },
+    "city": {
+      "rect": [
+        11400,
+        -4900,
+        8000,
+        9100
+      ],
+      "k": 0.22
+    },
+    "studio": {
+      "rect": [
+        13400,
+        -2400,
+        3200,
+        1400
+      ],
+      "k": 0.7
+    }
+  },
+  "building": {
+    "_doc": "the restaurant's cut-away (Chapter 4); at night its interior stays warmer than the city around it",
+    "rect": [
+      2100,
+      -2240,
+      8020,
+      1290
+    ]
+  },
+  "neighbours": {
+    "_doc": "the exterior plate's neighbouring buildings (x0, x1, top) — at night their windows light up as square dabs",
+    "rects": [
+      [
+        -2600,
+        -1500,
+        -900
+      ],
+      [
+        -1500,
+        -380,
+        -300
+      ],
+      [
+        8100,
+        9000,
+        -1400
+      ],
+      [
+        9000,
+        10300,
+        -600
+      ],
+      [
+        10300,
+        11400,
+        -1900
+      ]
+    ],
+    "grid": [
+      240,
+      260,
+      90,
+      120
+    ]
+  },
+  "tower": {
+    "x": [
+      13200,
+      16800
+    ],
+    "top": -3800,
+    "floors": [
+      -3100,
+      -2400,
+      -1000,
+      -300,
+      400
+    ],
+    "sign": [
+      15000,
+      -3470
+    ],
+    "neighbours": [
+      [
+        11700,
+        12900,
+        -2700
+      ],
+      [
+        17100,
+        18300,
+        -3300
+      ],
+      [
+        18300,
+        19400,
+        -2100
+      ]
+    ]
+  },
+  "studio": {
+    "ceiling": -2400,
+    "floor": -1080,
+    "window": [
+      13480,
+      -2270,
+      15080,
+      -1620
+    ],
+    "desk": [
+      13680,
+      15160,
+      -1320
+    ],
+    "whiteboard": [
+      15200,
+      -1990,
+      15900,
+      -1430
+    ],
+    "display": [
+      15960,
+      -2150,
+      16390,
+      -1520
+    ],
+    "rack": [
+      16430,
+      -1730,
+      16580,
+      -1080
+    ],
+    "lamps": [
+      13980,
+      14420,
+      14860
+    ],
+    "monitors": [
+      [
+        13980,
+        -1440
+      ],
+      [
+        14460,
+        -1440
+      ],
+      [
+        14940,
+        -1440
+      ]
+    ],
+    "engineers": {
+      "_doc": "bottom-centre anchors on the desk top (the sprites are cut at desk height)",
+      "e1": [
+        13730,
+        -1320
+      ],
+      "e2": [
+        14700,
+        -1320
+      ],
+      "e3": [
+        15110,
+        -1320
+      ]
+    },
+    "runners": [
+      [
+        16175,
+        -1830
+      ],
+      [
+        14940,
+        -1470
+      ],
+      [
+        14460,
+        -1470
+      ],
+      [
+        13980,
+        -1470
+      ],
+      [
+        15550,
+        -1700
+      ],
+      [
+        16175,
+        -1830
+      ]
+    ]
+  },
+  "drift": {
+    "_doc": "where the operational modules float once they have left the manager's monitor (5.1 → 5.3)",
+    "center": [
+      13300,
+      -5750
+    ],
+    "rx": 1900,
+    "ry": 650
+  },
+  "qr": {
+    "_doc": "the final QR card in the Kerinti sky: centre, module size, quiet zone in modules. The sky's big swirl is painted around this point, as Chapter 1's swirl was painted around the portal finder. quiet = 4 modules, the minimum ISO/IEC 18004 requires.",
+    "center": [
+      14760,
+      -6200
+    ],
+    "cell": 34,
+    "quiet": 4
+  },
+  "camera": {
+    "_doc": "[x, y, zoom, yaw, pitch, roll] — same convention as chapter4/geometry.json",
+    "cityPull": [
+      6800,
+      -1500,
+      0.13,
+      0,
+      0,
+      0
+    ],
+    "skyKerinti": [
+      12400,
+      -5200,
+      0.3,
+      0,
+      0,
+      0
+    ],
+    "towerFace": [
+      15000,
+      -3300,
+      0.42,
+      0,
+      0,
+      0
+    ],
+    "studioWide": [
+      15000,
+      -1700,
+      0.55,
+      -5,
+      -1,
+      -0.2
+    ],
+    "teamDesk": [
+      14450,
+      -1580,
+      1.08,
+      -3,
+      2,
+      0
+    ],
+    "towerRise": [
+      14800,
+      -4300,
+      0.32,
+      0,
+      0,
+      0
+    ],
+    "finalSky": [
+      14080,
+      -6200,
+      0.55,
+      0,
+      0,
+      0
+    ]
+  }
+}
