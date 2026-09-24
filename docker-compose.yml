@@ -2,12 +2,12 @@
 # Values come from .env next to this file (copy .env.example). Nothing secret belongs here or in .env's
 # NEXT_PUBLIC_* values; Cloudflare Tunnel runs separately and is not part of this stack.
 
-name: kerinti-web
+name: kerinti-empresyonizm
 
 services:
-  kerinti-web:
-    container_name: kerinti-web
-    image: kerinti-web:latest
+  kerinti-empresyonizm:
+    container_name: kerinti-empresyonizm
+    image: kerinti-empresyonizm:latest
     build:
       context: .
       dockerfile: Dockerfile

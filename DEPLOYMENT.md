@@ -2,13 +2,13 @@
 
 Path to production: **GitHub → Ubuntu server (CasaOS) → Docker Compose → Cloudflare Tunnel → kerinti.com.tr**.
 
-The site is one Next.js container (`kerinti-web`) that serves HTTP on port 3020. It uses no database, no reverse proxy
+The site is one Next.js container (`kerinti-empresyonizm`) that serves HTTP on port 3020. It uses no database, no reverse proxy
 and no other services. Cloudflare Tunnel runs separately and is **not** part of this repository.
 
 | File | Purpose |
 |---|---|
 | `Dockerfile` | multi-stage build (Node 22 Alpine, `npm ci` → `next build` → standalone runtime, non-root) |
-| `docker-compose.yml` | the `kerinti-web` service: port, healthcheck, restart policy, build args |
+| `docker-compose.yml` | the `kerinti-empresyonizm` service: port, healthcheck, restart policy, build args |
 | `.env.example` | every setting the site reads; copy it to `.env` on the server |
 | `.dockerignore` | keeps `.git`, `.env`, `node_modules`, art sources, docs and scratch out of the image |
 
@@ -96,11 +96,11 @@ This is a standard Compose project. No CasaOS-specific configuration is required
    cloned repository. This is the simplest route because the image is built from the repository's `Dockerfile`.
 2. **CasaOS custom app.** Use *App Store → Custom Install → Import* and paste `docker-compose.yml`. CasaOS's importer
    is designed for pre-built images and may not build from a local `Dockerfile`, so build the image in the
-   repository first with `docker compose build`. That creates `kerinti-web:latest`. Then import. Enter the `.env`
+   repository first with `docker compose build`. That creates `kerinti-empresyonizm:latest`. Then import. Enter the `.env`
    values as build args or rebuild from the terminal after any change, because the `NEXT_PUBLIC_*` values are baked in
    at build time.
 
-Either way the container is named `kerinti-web` and listens on `APP_PORT` (default 3020).
+Either way the container is named `kerinti-empresyonizm` and listens on `APP_PORT` (default 3020).
 
 ## Cloudflare Tunnel
 
@@ -119,7 +119,7 @@ The service address depends on where `cloudflared` runs:
 | `cloudflared` runs … | Service URL |
 |---|---|
 | on the host (system service) | `http://localhost:3020` |
-| in a container on the same server | `http://SERVER_IP:3020` (the server's LAN IP), or attach the `cloudflared` container to the `kerinti-web_default` network and use `http://kerinti-web:3020` |
+| in a container on the same server | `http://SERVER_IP:3020` (the server's LAN IP), or attach the `cloudflared` container to the `kerinti-empresyonizm_default` network and use `http://kerinti-empresyonizm:3020` |
 | on another machine in the LAN | `http://SERVER_IP:3020` |
 
 Cloudflare terminates HTTPS. The container itself only speaks HTTP. If the tunnel is the only way in, the server's
